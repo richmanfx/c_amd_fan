@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Installation "libconfig": sudo aptitude install libconfig9 libconfig8-dev
+
+
 if [[ ! -v PKG_CONFIG_PATH ]]; then
     echo "PKG_CONFIG_PATH is not set"
     echo "Set PKG_CONFIG_PATH"
@@ -9,7 +12,6 @@ elif [[ -z "$PKG_CONFIG_PATH" ]]; then
 else
     echo "PKG_CONFIG_PATH has the value: $PKG_CONFIG_PATH"
 fi
-
 
 
 /usr/bin/gcc `pkg-config --cflags libconfig` c_amd_fan.c -o c_amd_fan `pkg-config --libs libconfig`
