@@ -8,8 +8,8 @@
 #include <libconfig.h>
 
 
-char* make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name);
-char* string_value_config_read(char *config_file_name, char *parameter_name, char *);
+void make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name);
+void string_value_config_read(char *config_file_name, char *parameter_name, char *);
 int int_value_config_read(char *config_file_name, char *parameter_name);
 
 void main()
@@ -34,10 +34,10 @@ void main()
     // Read parameters from config file
 
     string_value_config_read(full_config_file_name, debug_level_parameter_name, debug_level);
-    printf("Уровень отладки: %s\n", debug_level);
+    printf("Уровень отладки: %s\n\n", debug_level);
 
     high_temp = int_value_config_read(full_config_file_name, high_temp_parameter_name);
-    printf("Верхний уровень температуры: %d\n", high_temp);
+    printf("Верхний уровень температуры: %d\n\n", high_temp);
 
     low_temp = int_value_config_read(full_config_file_name, low_temp_parameter_name);
     printf("Нижний уровень температуры: %d\n", low_temp);
@@ -46,7 +46,7 @@ void main()
 
 }
 
-char* string_value_config_read(char *config_file_name, char *parameter_name, char *value)
+void string_value_config_read(char *config_file_name, char *parameter_name, char *value)
 {
     config_t cfg;
     const char *parameter_value;
@@ -72,8 +72,9 @@ char* string_value_config_read(char *config_file_name, char *parameter_name, cha
     // Освободить память обязательно, если это не конец программы
     config_destroy(&cfg);
 
+    //strcat(value, parameter_value);
     *value = *parameter_value;
-    return value;
+
 }
 
 
@@ -118,7 +119,7 @@ int int_value_config_read(char *config_file_name, char *parameter_name)
 
 }
 
-char* make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name)
+void make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name)
 {
     // Полное имя файла конфигурации
     strcat(full_config_name, config_dir_name);
@@ -127,5 +128,5 @@ char* make_full_config_name(char *config_dir_name, char *config_file_name, char 
 
     printf("Read configuration from file '%s'\n", full_config_name);
 
-    return full_config_name;
+    // return full_config_name;
 }
