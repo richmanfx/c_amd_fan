@@ -1,6 +1,6 @@
-/******************************************************************************/
-/*                                                                            */
-/******************************************************************************/
+/******************************************************************************
+*    Автоматический регулятор скорости вращения вентиляторов видеокарт AMD    *
+*******************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,11 +69,10 @@ void string_value_config_read(char *config_file_name, char *parameter_name, char
     else
         fprintf(stderr, "No '%s' setting in configuration file.\n", parameter_name);
 
+    strcat(value, parameter_value);
+
     // Освободить память обязательно, если это не конец программы
     config_destroy(&cfg);
-
-    //strcat(value, parameter_value);
-    *value = *parameter_value;
 
 }
 

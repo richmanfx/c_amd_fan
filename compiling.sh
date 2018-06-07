@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Installation "libconfig": sudo aptitude install libconfig9 libconfig8-dev
+# Installation "libconfig": sudo apt install libconfig9 libconfig8-dev
 
 
 if [[ ! -v PKG_CONFIG_PATH ]]; then
