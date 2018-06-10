@@ -1,5 +1,5 @@
 ######################################################################
-#   Сonfiguration file for "amd_fan"
+#   Configuration file for "amd_fan"
 #   Place in /usr/local/etc/amd_fan/
 ######################################################################
 
@@ -16,7 +16,10 @@ SLEEP_TIME = 60
 SPEED_STEP = 5
 
 # Initial fan speed when the program starts, % (default value - 80)
-INIT_FAN_SPEED = 100
+INIT_FAN_SPEED = 80
+
+# Minimal fan speed, % (default value - 15)
+MIN_FAN_SPEED = 15
 
 # Debug level ("DEBUG" - debugging messages, "" - silence)
 DEBUG_LEVEL = "DEBUG"
