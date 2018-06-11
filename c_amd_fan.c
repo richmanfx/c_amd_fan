@@ -57,15 +57,36 @@ void main()
     /************************************/
     gpu_number = get_gpu_number();
 
-
     closelog();
 }
 
 int get_gpu_number() {
 
     int gpu_number = 0;
+    FILE * file;
+    size_t last_char;
+    char command_result[80];
 
-    syslog(LOG_DEBUG,"GPU count: %d\n\n", gpu_number);
+    char command[] = "ethos-smi | grep \"\\[\" | grep \"\\]\" | grep GPU | tail -1 | cut -f 1 -d \" \" | cut -c 4,5";
+
+    file = popen(command, "r");
+    last_char = fread(command_result, 1, 80, file);
+    command_result[last_char] = '\0';
+
+    if(command_result[0] == '\000') {
+        syslog(LOG_ERR,"GPU not found");
+    } else {
+        if(command_result[1] == '\012' && command_result[2] == '\000')
+            gpu_number = ((int)command_result[0] - 48) +1;
+        else {
+            if (command_result[2] == '\012' && command_result[3] == '\000') {  // Здесь ещё не известно - нет более 10-ти GPU для тестов
+                gpu_number = (((int) command_result[1] - 48) * 10) + ((int) command_result[0] - 48) + 1;
+            }
+        }
+    }
+
+    syslog(LOG_DEBUG,"GPU count: %d", gpu_number);
+
     return gpu_number;
 }
 
@@ -77,7 +98,7 @@ void string_value_config_read(char *config_file_name, char *parameter_name, cons
 
     // Читать файл. Если ошибка, то завершить работу
     if(! config_read_file(&cfg, config_file_name)) {
-        syslog(LOG_ERR, "%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+        syslog(LOG_ERR, "Read config file error. %s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);   // Освободить память обязательно, если это не конец программы
     }
 
@@ -108,7 +129,7 @@ int int_value_config_read(char *config_file_name, char *parameter_name) {
     // Читать файл. Если ошибка, то завершить работу
     if(! config_read_file(&cfg, config_file_name))
     {
-        syslog(LOG_ERR, "%s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
+        syslog(LOG_ERR, "Read config file error. %s:%d - %s\n", config_error_file(&cfg), config_error_line(&cfg), config_error_text(&cfg));
 
         // Освободить память обязательно, если это не конец программы
         config_destroy(&cfg);
@@ -133,5 +154,5 @@ void make_full_config_name(char *config_dir_name, char *config_file_name, char *
     strcat(full_config_name, "/");
     strcat(full_config_name, config_file_name);
 
-    syslog(LOG_DEBUG, "Read configuration from file '%s'", full_config_name);
+    syslog(LOG_DEBUG, "Name of configuration file: '%s'", full_config_name);
 }
