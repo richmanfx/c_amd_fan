@@ -156,6 +156,8 @@ int get_temp(int gpu_number) {      // TODO: Вынести выполнение
 
     current_temp = atoi(command_result);
 
+    pclose(file);
+
 
     return current_temp;
 }
@@ -185,6 +187,8 @@ void set_fan_speed(int gpu_number, int new_fan_speed) {
     command_result[last_char] = '\0';
 
 //    syslog(LOG_DEBUG,"'set_fan_speed' command_result: %s", command_result);
+
+    pclose(file);
 }
 
 
@@ -209,6 +213,8 @@ int get_fan_speed(int gpu_number) {
 
     fan_speed = atoi(command_result);
 
+    pclose(file);
+
     return fan_speed;
 }
 
@@ -229,6 +235,8 @@ int get_gpu_number(void) {
     gpu_number = atoi(command_result);
 
     syslog(LOG_DEBUG,"GPU count: %d", gpu_number);
+
+    pclose(file);
 
     return gpu_number;
 }
