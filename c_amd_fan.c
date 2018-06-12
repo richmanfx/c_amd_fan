@@ -7,12 +7,22 @@
 #include <string.h>
 #include <libconfig.h>
 #include <syslog.h>
+#include <zconf.h>
+#include <stdbool.h>
 
 
 void make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name);
 void string_value_config_read(char *config_file_name, char *parameter_name, const char *local_value);
 int int_value_config_read(char *config_file_name, char *parameter_name);
-int get_gpu_number();
+int get_gpu_number(void);
+void set_initial_fan_speed(int gpu_number, int init_fan_speed);
+void set_fan_speed(int gpu_number, int new_fan_speed);
+int get_fan_speed(int gpu_number);
+int get_temp(int gpu_number);
+void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
+                               int high_temp, int speed_step, int min_fan_speed);
+bool valid_range(int minimum, int maximum, int variable);
+
 
 void main()
 {
@@ -56,16 +66,159 @@ void main()
     /*          Get GPU number          */
     /************************************/
     gpu_number = get_gpu_number();
+    if(gpu_number == 0) {
+        syslog(LOG_ERR,"GPU not found");
+        exit(1);
+    }
 
-    closelog();
+
+    /************************************/
+    /*     Set initial fan speed        */
+    /************************************/
+    set_initial_fan_speed(gpu_number, init_fan_speed);
+
+
+    /************************************/
+    /*        Main program cycle        */
+    /************************************/
+    while(1) {
+        syslog(LOG_DEBUG, "\n\n-=====================================================================-");
+        syslog(LOG_DEBUG, "A new cycle of change of fan speed. Cycle time: %d seconds.", sleep_time);
+        set_new_fan_speed_for_all(gpu_number, init_fan_speed, low_temp, high_temp, speed_step, min_fan_speed);
+        syslog(LOG_DEBUG, "\n\n-=====================================================================-");
+        sleep((unsigned int) sleep_time);
+    }
+
 }
 
-int get_gpu_number() {
+
+// Sets the fan speed for all graphics cards
+//     Param: gpu_count - Number of video cards in the system
+void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
+                               int high_temp, int speed_step, int min_fan_speed) {
+
+    int new_fan_speed = init_fan_speed;
+    int current_temp;
+    int current_fan_speed;
+
+
+    for(int gpu = 0; gpu <= gpu_number; gpu++) {
+
+        current_temp = get_temp(gpu);
+        current_fan_speed = get_fan_speed(gpu);
+        syslog(LOG_DEBUG, "GPU %d: Temp: %d°C, Fan speed: %d%%", gpu, current_temp, current_fan_speed);
+
+        if(!valid_range(low_temp, high_temp, current_temp)) {
+
+            syslog(LOG_DEBUG, "GPU %d: Out of temperature range %d...%d °C", gpu, low_temp, high_temp);
+
+            // Increase the speed
+            if(current_temp > high_temp) {
+                if(current_fan_speed < 100) {
+                    new_fan_speed = current_fan_speed + speed_step;
+
+                }
+            }
+
+            // Decrease the speed
+            if(current_temp < low_temp) {
+                if(current_fan_speed > min_fan_speed) {
+                    new_fan_speed = current_fan_speed - speed_step;
+                }
+            }
+
+            if(new_fan_speed != current_fan_speed) {
+                set_fan_speed(gpu, new_fan_speed);
+                syslog(LOG_DEBUG, "GPU %d: Set new fan speed: %d %%", gpu, new_fan_speed);
+            }
+        }
+
+    }
+}
+
+// Return the temperature of a given GPU
+//     Param: gpu_number - Number of video cards in the system
+//     Return: GPU temperature
+int get_temp(int gpu_number) {
+    FILE * file;
+    size_t last_char;
+    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command[] = "";
+    int current_temp;
+
+    sprintf(command, "ethos-smi -g %d | grep \"* Temperature\" | cut -f 4 -d \" \" | rev | cut -c 2- | rev", gpu_number);
+
+    file = popen(command, "r");
+    last_char = fread(command_result, 1, 80, file);
+    command_result[last_char] = '\0';
+
+//    syslog(LOG_DEBUG,"'get_temp' command_result: %s", command_result);
+
+    current_temp = atoi(command_result);
+
+
+    return current_temp;
+}
+
+// Sets the initial fan speed when the program starts
+//     Param: gpu_number - Number of video cards in the system
+void set_initial_fan_speed(int gpu_number, int init_fan_speed) {
+    for(int gpu = 0; gpu <= gpu_number; gpu++) {
+        set_fan_speed(gpu, init_fan_speed);
+    }
+}
+
+
+// Sets a new fan speed for a given GPU
+//     Param: gpu_number - Number of video cards in the system
+//     Param: new_fan_speed: New speed in percentage
+void set_fan_speed(int gpu_number, int new_fan_speed) {
+
+    FILE * file;
+    size_t last_char;
+    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command[] = "";
+    sprintf(command, "sudo ethos-smi --gpu %d --fan %d", gpu_number, new_fan_speed);
+
+    file = popen(command, "r");
+    last_char = fread(command_result, 1, 80, file);
+    command_result[last_char] = '\0';
+
+//    syslog(LOG_DEBUG,"'set_fan_speed' command_result: %s", command_result);
+}
+
+
+// Return fan speed of a given GPU
+//     Param: gpu_number - Number of video cards in the system
+//     Return: Fan speed
+int get_fan_speed(int gpu_number) {
+
+    int fan_speed;
+
+    FILE * file;
+    size_t last_char;
+    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command[] = "";
+    sprintf(command, "ethos-smi -g %d | grep \"* Fan Speed\" | cut -f 5 -d \" \" | rev | cut -c 2- | rev", gpu_number);
+
+    file = popen(command, "r");
+    last_char = fread(command_result, 1, 80, file);
+    command_result[last_char] = '\0';
+
+//    syslog(LOG_DEBUG,"'get_fan_speed' command_result: %s", command_result);
+
+    fan_speed = atoi(command_result);
+
+    return fan_speed;
+}
+
+// Returns the number of GPU
+int get_gpu_number(void) {
 
     int gpu_number = 0;
     FILE * file;
     size_t last_char;
-    char command_result[80];
+    char command_result[80];        // TODO: сократить размер массива до минимума
 
     char command[] = "ethos-smi | grep \"\\[\" | grep \"\\]\" | grep GPU | tail -1 | cut -f 1 -d \" \" | cut -c 4,5";
 
@@ -73,22 +226,13 @@ int get_gpu_number() {
     last_char = fread(command_result, 1, 80, file);
     command_result[last_char] = '\0';
 
-    if(command_result[0] == '\000') {
-        syslog(LOG_ERR,"GPU not found");
-    } else {
-        if(command_result[1] == '\012' && command_result[2] == '\000')
-            gpu_number = ((int)command_result[0] - 48) +1;
-        else {
-            if (command_result[2] == '\012' && command_result[3] == '\000') {  // Здесь ещё не известно - нет более 10-ти GPU для тестов
-                gpu_number = (((int) command_result[1] - 48) * 10) + ((int) command_result[0] - 48) + 1;
-            }
-        }
-    }
+    gpu_number = atoi(command_result);
 
     syslog(LOG_DEBUG,"GPU count: %d", gpu_number);
 
     return gpu_number;
 }
+
 
 void string_value_config_read(char *config_file_name, char *parameter_name, const char *local_value) {
     config_t cfg;
@@ -155,4 +299,21 @@ void make_full_config_name(char *config_dir_name, char *config_file_name, char *
     strcat(full_config_name, config_file_name);
 
     syslog(LOG_DEBUG, "Name of configuration file: '%s'", full_config_name);
+}
+
+// Check range of valid values
+//    Param: minimum - Minimum value
+//    Param: maximum - Maximum value
+//    Param: variable - Check value
+//    Return: True - value is valid
+bool valid_range(int minimum, int maximum, int variable) {
+
+    bool result;
+
+    if((variable >= minimum) && (variable <= maximum))
+        result = true;
+    else
+        result = false;
+
+    return result;
 }
