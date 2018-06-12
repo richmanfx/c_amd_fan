@@ -82,10 +82,10 @@ void main()
     /*        Main program cycle        */
     /************************************/
     while(1) {
-        syslog(LOG_DEBUG, "\n\n-=====================================================================-");
+        syslog(LOG_DEBUG, "-=========================================================-");
         syslog(LOG_DEBUG, "A new cycle of change of fan speed. Cycle time: %d seconds.", sleep_time);
         set_new_fan_speed_for_all(gpu_number, init_fan_speed, low_temp, high_temp, speed_step, min_fan_speed);
-        syslog(LOG_DEBUG, "\n\n-=====================================================================-");
+        syslog(LOG_DEBUG, "-=========================================================-");
         sleep((unsigned int) sleep_time);
     }
 
@@ -139,7 +139,7 @@ void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
 // Return the temperature of a given GPU
 //     Param: gpu_number - Number of video cards in the system
 //     Return: GPU temperature
-int get_temp(int gpu_number) {
+int get_temp(int gpu_number) {      // TODO: Вынести выполнение команды в отдельную функцию!!!
     FILE * file;
     size_t last_char;
     char command_result[80];        // TODO: сократить размер массива до минимума
