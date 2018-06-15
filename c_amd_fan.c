@@ -142,14 +142,14 @@ void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
 int get_temp(int gpu_number) {      // TODO: Вынести выполнение команды в отдельную функцию!!!
     FILE * file;
     size_t last_char;
-    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command_result[75];
     char command[] = "";
     int current_temp;
 
     sprintf(command, "ethos-smi -g %d | grep \"* Temperature\" | cut -f 4 -d \" \" | rev | cut -c 2- | rev", gpu_number);
 
     file = popen(command, "r");
-    last_char = fread(command_result, 1, 80, file);
+    last_char = fread(command_result, 1, 75, file);
     command_result[last_char] = '\0';
 
 //    syslog(LOG_DEBUG,"'get_temp' command_result: %s", command_result);
@@ -178,12 +178,12 @@ void set_fan_speed(int gpu_number, int new_fan_speed) {
 
     FILE * file;
     size_t last_char;
-    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command_result[75];
     char command[] = "";
     sprintf(command, "sudo ethos-smi --gpu %d --fan %d", gpu_number, new_fan_speed);
 
     file = popen(command, "r");
-    last_char = fread(command_result, 1, 80, file);
+    last_char = fread(command_result, 1, 75, file);
     command_result[last_char] = '\0';
 
 //    syslog(LOG_DEBUG,"'set_fan_speed' command_result: %s", command_result);
@@ -201,12 +201,12 @@ int get_fan_speed(int gpu_number) {
 
     FILE * file;
     size_t last_char;
-    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command_result[75];
     char command[] = "";
     sprintf(command, "ethos-smi -g %d | grep \"* Fan Speed\" | cut -f 5 -d \" \" | rev | cut -c 2- | rev", gpu_number);
 
     file = popen(command, "r");
-    last_char = fread(command_result, 1, 80, file);
+    last_char = fread(command_result, 1, 75, file);
     command_result[last_char] = '\0';
 
 //    syslog(LOG_DEBUG,"'get_fan_speed' command_result: %s", command_result);
@@ -224,12 +224,12 @@ int get_gpu_number(void) {
     int gpu_number = 0;
     FILE * file;
     size_t last_char;
-    char command_result[80];        // TODO: сократить размер массива до минимума
+    char command_result[75];
 
     char command[] = "ethos-smi | grep \"\\[\" | grep \"\\]\" | grep GPU | tail -1 | cut -f 1 -d \" \" | cut -c 4,5";
 
     file = popen(command, "r");
-    last_char = fread(command_result, 1, 80, file);
+    last_char = fread(command_result, 1, 75, file);
     command_result[last_char] = '\0';
 
     gpu_number = atoi(command_result);
