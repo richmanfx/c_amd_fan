@@ -9,6 +9,8 @@
 #include <syslog.h>
 #include <zconf.h>
 #include <stdbool.h>
+#include <signal.h>
+#include <fcntl.h>
 
 
 void make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name);
@@ -22,6 +24,11 @@ int get_temp(int gpu_number);
 void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
                                int high_temp, int speed_step, int min_fan_speed);
 bool valid_range(int minimum, int maximum, int variable);
+//static void hdl(int sig, siginfo_t *siginfo, void *context);
+static void hdl(int sig);
+
+struct sigaction act;
+
 
 
 void main()
@@ -87,8 +94,24 @@ void main()
         set_new_fan_speed_for_all(gpu_number, init_fan_speed, low_temp, high_temp, speed_step, min_fan_speed);
         syslog(LOG_DEBUG, "-=========================================================-");
         sleep((unsigned int) sleep_time);
-    }
 
+        act.sa_sigaction = (void (*)(int, siginfo_t *, void *)) &hdl;
+        if (sigaction(SIGINT, &act, NULL)<0) {
+            perror("sigaction");
+            exit(1);
+        }
+    }
+}
+
+
+//static void hdl(int sig, siginfo_t *siginfo, void *context)
+static void hdl(int sig)
+{
+    if (sig==SIGINT)
+    {
+        syslog(LOG_DEBUG, "\nServer was closed by user with Ctrl+C\n\n");
+        exit(0);
+    }
 }
 
 /*****************************************************************************
