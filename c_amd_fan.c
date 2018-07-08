@@ -10,21 +10,19 @@
 #include <zconf.h>
 #include <stdbool.h>
 #include <signal.h>
-#include <fcntl.h>
 
 
 void make_full_config_name(char *config_dir_name, char *config_file_name, char *full_config_name);
 void string_value_config_read(char *config_file_name, char *parameter_name, const char *local_value);
 int int_value_config_read(char *config_file_name, char *parameter_name);
-int get_gpu_number(void);
-void set_initial_fan_speed(int gpu_number, int init_fan_speed);
+int get_gpu_quantity(void);
+void set_initial_fan_speed(int gpu_quantity, int init_fan_speed);
 void set_fan_speed(int gpu_number, int new_fan_speed);
 int get_fan_speed(int gpu_number);
 int get_temp(int gpu_number);
-void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
+void set_new_fan_speed_for_all(int gpu_quantity, int init_fan_speed, int low_temp,
                                int high_temp, int speed_step, int min_fan_speed);
 bool valid_range(int minimum, int maximum, int variable);
-//static void hdl(int sig, siginfo_t *siginfo, void *context);
 static void hdl(int sig);
 
 struct sigaction act;
@@ -47,7 +45,7 @@ void main()
     int speed_step;
     int init_fan_speed;
     int min_fan_speed;
-    int gpu_number;
+    int gpu_quantity;
 
 
     /***************************************
@@ -70,10 +68,10 @@ void main()
 
 
     /************************************
-     *          Get GPU number          *
+     *          Get GPU quantity        *
      ************************************/
-    gpu_number = get_gpu_number();
-    if(gpu_number == 0) {
+    gpu_quantity = get_gpu_quantity();
+    if(gpu_quantity == 0) {
         syslog(LOG_ERR,"GPU not found");
         exit(1);
     }
@@ -82,7 +80,7 @@ void main()
     /************************************
      *     Set initial fan speed        *
      ************************************/
-    set_initial_fan_speed(gpu_number, init_fan_speed);
+    set_initial_fan_speed(gpu_quantity, init_fan_speed);
 
 
     /************************************
@@ -90,9 +88,8 @@ void main()
      ************************************/
     while(1) {
         syslog(LOG_DEBUG, "-=========================================================-");
-        syslog(LOG_DEBUG, "A new cycle of change of fan speed. Cycle time: %d seconds.", sleep_time);
-        set_new_fan_speed_for_all(gpu_number, init_fan_speed, low_temp, high_temp, speed_step, min_fan_speed);
-        syslog(LOG_DEBUG, "-=========================================================-");
+        syslog(LOG_DEBUG, "Cycle time: %d seconds.", sleep_time);
+        set_new_fan_speed_for_all(gpu_quantity, init_fan_speed, low_temp, high_temp, speed_step, min_fan_speed);
         sleep((unsigned int) sleep_time);
 
         act.sa_sigaction = (void (*)(int, siginfo_t *, void *)) &hdl;
@@ -104,7 +101,6 @@ void main()
 }
 
 
-//static void hdl(int sig, siginfo_t *siginfo, void *context)
 static void hdl(int sig)
 {
     if (sig==SIGINT)
@@ -118,7 +114,7 @@ static void hdl(int sig)
  * Sets the fan speed for all graphics cards                                 *
  *     Param: gpu_count - Number of video cards in the system                *
 /*****************************************************************************/
-void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
+void set_new_fan_speed_for_all(int gpu_quantity, int init_fan_speed, int low_temp,
                                int high_temp, int speed_step, int min_fan_speed) {
 
     int new_fan_speed = init_fan_speed;
@@ -126,7 +122,7 @@ void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
     int current_fan_speed;
 
 
-    for(int gpu = 0; gpu <= gpu_number; gpu++) {
+    for(int gpu = 0; gpu <= gpu_quantity; gpu++) {
 
         current_temp = get_temp(gpu);
         current_fan_speed = get_fan_speed(gpu);
@@ -139,9 +135,14 @@ void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
             // Increase the speed
             if(current_temp > high_temp) {
                 if(current_fan_speed < 100) {
-                    new_fan_speed = current_fan_speed + speed_step;
-
+                    if(current_fan_speed > 94)
+                        new_fan_speed = 100;
+                    else
+                        new_fan_speed = current_fan_speed + speed_step;
                 }
+                else
+                    new_fan_speed = current_fan_speed;
+
             }
 
             // Decrease the speed
@@ -149,11 +150,11 @@ void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
                 if(current_fan_speed > min_fan_speed) {
                     new_fan_speed = current_fan_speed - speed_step;
                 }
+                else
+                    new_fan_speed = min_fan_speed;
             }
 
-
-            if(((current_temp > high_temp) && (current_fan_speed < 100)) ||
-               ((current_temp < low_temp) && (current_fan_speed > min_fan_speed))){
+            if((current_temp > high_temp) || (current_temp < low_temp)) {
                 set_fan_speed(gpu, new_fan_speed);
                 syslog(LOG_DEBUG, "GPU %d: Set new fan speed: %d %%", gpu, new_fan_speed);
             }
@@ -164,7 +165,7 @@ void set_new_fan_speed_for_all(int gpu_number, int init_fan_speed, int low_temp,
 
 /*****************************************************************************
  * Return the temperature of a given GPU                                     *
- *     Param: gpu_number - Number of video cards in the system               *
+ *     Param: gpu_number - Video card number in the system                   *
  *     Return: GPU temperature                                               *
  *****************************************************************************/
 int get_temp(int gpu_number) {      // TODO: Вынести выполнение команды в отдельную функцию!!!
@@ -190,10 +191,10 @@ int get_temp(int gpu_number) {      // TODO: Вынести выполнение
 
 /*****************************************************************************
  * Sets the initial fan speed when the program starts                        *
- *     Param: gpu_number - Number of video cards in the system               *
+ *     Param: gpu_quantity - Number of video cards in the system               *
  *****************************************************************************/
-void set_initial_fan_speed(int gpu_number, int init_fan_speed) {
-    for(int gpu = 0; gpu <= gpu_number; gpu++) {
+void set_initial_fan_speed(int gpu_quantity, int init_fan_speed) {
+    for(int gpu = 0; gpu <= gpu_quantity; gpu++) {
         set_fan_speed(gpu, init_fan_speed);
     }
 }
@@ -247,11 +248,11 @@ int get_fan_speed(int gpu_number) {
 }
 
 /*****************************************************************************
- * Returns the number of GPU                                                 *
+ * Returns the quantity of GPU                                                 *
  *****************************************************************************/
-int get_gpu_number(void) {
+int get_gpu_quantity(void) {
 
-    int gpu_number = 0;
+    int gpu_quantity = 0;
     FILE * file;
     size_t last_char;
     char command_result[75];
@@ -262,13 +263,13 @@ int get_gpu_number(void) {
     last_char = fread(command_result, 1, 75, file);
     command_result[last_char] = '\0';
 
-    gpu_number = (int) strtol(command_result, (char **)NULL, 10);
+    gpu_quantity = (int) strtol(command_result, (char **)NULL, 10);
 
-    syslog(LOG_DEBUG,"GPU count: %d", gpu_number);
+    syslog(LOG_DEBUG,"GPU count: %d", gpu_quantity);
 
     pclose(file);
 
-    return gpu_number;
+    return gpu_quantity;
 }
 
 
